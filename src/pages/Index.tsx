@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -62,6 +64,10 @@ const Index = () => {
     dealsAfterMidnight: ''
   });
 
+  const [editingCabinet, setEditingCabinet] = useState<Cabinet | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deletingCabinetId, setDeletingCabinetId] = useState<string | null>(null);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -117,6 +123,38 @@ const Index = () => {
       title: 'Экспорт завершён',
       description: 'Файл Excel успешно сохранён'
     });
+  };
+
+  const handleEdit = (cabinet: Cabinet) => {
+    setEditingCabinet(cabinet);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingCabinet) {
+      setCabinets(cabinets.map(c => c.id === editingCabinet.id ? editingCabinet : c));
+      setIsEditDialogOpen(false);
+      setEditingCabinet(null);
+      toast({
+        title: 'Успешно обновлено',
+        description: `Кабинет ${editingCabinet.cabinet} обновлён`
+      });
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    setCabinets(cabinets.filter(c => c.id !== id));
+    setDeletingCabinetId(null);
+    toast({
+      title: 'Успешно удалено',
+      description: 'Кабинет удалён из системы'
+    });
+  };
+
+  const updateEditingCabinet = (field: keyof Cabinet, value: string | number) => {
+    if (editingCabinet) {
+      setEditingCabinet({ ...editingCabinet, [field]: value });
+    }
   };
 
   const totalStats = {
@@ -387,6 +425,7 @@ const Index = () => {
                       <TableHead className="text-right">Дневной оборот</TableHead>
                       <TableHead className="text-right">Баланс</TableHead>
                       <TableHead className="text-right">Сделки (до/после)</TableHead>
+                      <TableHead className="text-right">Действия</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -403,6 +442,24 @@ const Index = () => {
                         <TableCell className="text-right">{cabinet.balance.toLocaleString()} ₽</TableCell>
                         <TableCell className="text-right">
                           {cabinet.dealsBeforeMidnight} / {cabinet.dealsAfterMidnight}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(cabinet)}
+                            >
+                              <Icon name="Pencil" size={16} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeletingCabinetId(cabinet.id)}
+                            >
+                              <Icon name="Trash2" size={16} className="text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -465,6 +522,116 @@ const Index = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Редактировать кабинет</DialogTitle>
+              <DialogDescription>
+                Внесите изменения в данные кабинета
+              </DialogDescription>
+            </DialogHeader>
+            {editingCabinet && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-lastName">Фамилия</Label>
+                  <Input
+                    id="edit-lastName"
+                    value={editingCabinet.lastName}
+                    onChange={(e) => updateEditingCabinet('lastName', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-firstName">Имя</Label>
+                  <Input
+                    id="edit-firstName"
+                    value={editingCabinet.firstName}
+                    onChange={(e) => updateEditingCabinet('firstName', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-cabinet">Кабинет</Label>
+                  <Input
+                    id="edit-cabinet"
+                    value={editingCabinet.cabinet}
+                    onChange={(e) => updateEditingCabinet('cabinet', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-totalRevenue">Оборот кабинета (₽)</Label>
+                  <Input
+                    id="edit-totalRevenue"
+                    type="number"
+                    value={editingCabinet.totalRevenue}
+                    onChange={(e) => updateEditingCabinet('totalRevenue', parseFloat(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-dailyRevenue">Дневной оборот (₽)</Label>
+                  <Input
+                    id="edit-dailyRevenue"
+                    type="number"
+                    value={editingCabinet.dailyRevenue}
+                    onChange={(e) => updateEditingCabinet('dailyRevenue', parseFloat(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-balance">Баланс (₽)</Label>
+                  <Input
+                    id="edit-balance"
+                    type="number"
+                    value={editingCabinet.balance}
+                    onChange={(e) => updateEditingCabinet('balance', parseFloat(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-dealsBeforeMidnight">Сделки до 00:00 МСК</Label>
+                  <Input
+                    id="edit-dealsBeforeMidnight"
+                    type="number"
+                    value={editingCabinet.dealsBeforeMidnight}
+                    onChange={(e) => updateEditingCabinet('dealsBeforeMidnight', parseInt(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-dealsAfterMidnight">Сделки после 00:00 МСК</Label>
+                  <Input
+                    id="edit-dealsAfterMidnight"
+                    type="number"
+                    value={editingCabinet.dealsAfterMidnight}
+                    onChange={(e) => updateEditingCabinet('dealsAfterMidnight', parseInt(e.target.value))}
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleSaveEdit}>
+                <Icon name="Save" size={16} className="mr-2" />
+                Сохранить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={deletingCabinetId !== null} onOpenChange={() => setDeletingCabinetId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Подтвердите удаление</AlertDialogTitle>
+              <AlertDialogDescription>
+                Вы уверены, что хотите удалить этот кабинет? Это действие нельзя отменить.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deletingCabinetId && handleDelete(deletingCabinetId)}>
+                Удалить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
